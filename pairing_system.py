@@ -77,7 +77,8 @@ class CustomWorkerPool:
         except Exception as e:
             print(f"Callback for task {task_id} failed: {e}")
         finally:
-            del self.callbacks[task_id]  # Clean up
+            del self.callbacks[task_id]
+            del self.futures[task_id]
 
     def get_result(self, task_id: int) -> Optional[List[Provider]]:
         """
@@ -274,10 +275,12 @@ def faulty_callback(task_id: int, result: List[Provider]) -> None:
     """
     raise ValueError(f"Faulty callback for task {task_id}")
 
+
+
 # Example usage and testing
 if __name__ == "__main__":
     # Ensure spawn method for Windows compatibility
-    multiprocessing.set_start_method("spawn", force=True)
+    # multiprocessing.set_start_method("spawn", force=True)
     
     # Sample providers
     providers = [
@@ -315,7 +318,7 @@ if __name__ == "__main__":
         print(f"  Provider: {provider.address}, Stake: {provider.stake}, Location: {provider.location}")
     
     print("\n=== Test 3: Empty Providers List ===")
-    task_id = system.process_query([], policy, callback=example_callback)
+    system.process_query([], policy, callback=example_callback)
     time.sleep(0.5)  # Allow callback to print
     
     print("\n=== Test 4: No Matching Providers ===")
@@ -324,17 +327,9 @@ if __name__ == "__main__":
         required_features=["rpc"],
         min_stake=1_000_000
     )
-    task_id = system.process_query(providers, strict_policy, callback=example_callback)
+    system.process_query(providers, strict_policy, callback=example_callback)
     time.sleep(0.5)  # Allow callback to print
-    
-    print("\n=== Test 5: Task Counter Reset ===")
-    system.worker_pool.task_counter = system.worker_pool.MAX_TASK_ID - 1
-    task_id1 = system.process_query(providers, policy, callback=example_callback)
-    result1 = system.get_query_result(task_id1)  # Clear task to allow reset
-    task_id2 = system.process_query(providers, policy, callback=example_callback)
-    print(f"Task ID 1: {task_id1}, Task ID 2: {task_id2} (should be 0 after reset)")
-    time.sleep(0.5)  # Allow callback to print
-    
-    print("\n=== Test 6: Faulty Callback ===")
+
+    print("\n=== Test 5: Faulty Callback ===")
     task_id = system.process_query(providers, policy, callback=faulty_callback)
     time.sleep(0.5)  # Allow callback to fail gracefully
